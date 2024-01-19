@@ -20,52 +20,70 @@
  */
 
 #include "communication.h"
+#include "relay.h"
 
 #include "bricklib2/utility/communication_callback.h"
 #include "bricklib2/protocols/tfp/tfp.h"
 
-BootloaderHandleMessageResponse handle_message(const void *message, void *response) {
-	const uint8_t length = ((TFPMessageHeader*)message)->length;
-	switch(tfp_get_fid_from_message(message)) {
-		case FID_SET_VALUE:              return length != sizeof(SetValue)            ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : set_value(message);
-		case FID_GET_VALUE:              return length != sizeof(GetValue)            ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : get_value(message, response);
-		case FID_SET_CHANNEL_LED_CONFIG: return length != sizeof(SetChannelLEDConfig) ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : set_channel_led_config(message);
-		case FID_GET_CHANNEL_LED_CONFIG: return length != sizeof(GetChannelLEDConfig) ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : get_channel_led_config(message, response);
-		default: return HANDLE_MESSAGE_RESPONSE_NOT_SUPPORTED;
-	}
+BootloaderHandleMessageResponse handle_message(const void *message, void *response)
+{
+  const uint8_t length = ((TFPMessageHeader*)message)->length;
+
+  switch(tfp_get_fid_from_message(message)) {
+    case FID_SET_VALUE:              return length != sizeof(SetValue)            ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : set_value(message);
+    case FID_GET_VALUE:              return length != sizeof(GetValue)            ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : get_value(message, response);
+    case FID_SET_CHANNEL_LED_CONFIG: return length != sizeof(SetChannelLEDConfig) ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : set_channel_led_config(message);
+    case FID_GET_CHANNEL_LED_CONFIG: return length != sizeof(GetChannelLEDConfig) ? HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER : get_channel_led_config(message, response);
+    default: return HANDLE_MESSAGE_RESPONSE_NOT_SUPPORTED;
+  }
 }
 
+BootloaderHandleMessageResponse set_value(const SetValue *data)
+{
+  relay_set_value(0, data->channel0);
+  relay_set_value(1, data->channel1);
 
-BootloaderHandleMessageResponse set_value(const SetValue *data) {
-
-	return HANDLE_MESSAGE_RESPONSE_EMPTY;
+  return HANDLE_MESSAGE_RESPONSE_EMPTY;
 }
 
-BootloaderHandleMessageResponse get_value(const GetValue *data, GetValue_Response *response) {
-	response->header.length = sizeof(GetValue_Response);
+BootloaderHandleMessageResponse get_value(const GetValue *data, GetValue_Response *response)
+{
+  response->header.length = sizeof(GetValue_Response);
+  response->channel0      = relay_get_value(0);
+  response->channel1      = relay_get_value(1);
 
-	return HANDLE_MESSAGE_RESPONSE_NEW_MESSAGE;
+  return HANDLE_MESSAGE_RESPONSE_NEW_MESSAGE;
 }
 
-BootloaderHandleMessageResponse set_channel_led_config(const SetChannelLEDConfig *data) {
+BootloaderHandleMessageResponse set_channel_led_config(const SetChannelLEDConfig *data)
+{
+  if(data->channel > 1) {
+    return HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER;
+  }
 
-	return HANDLE_MESSAGE_RESPONSE_EMPTY;
+  relay.channel_led_config[data->channel] = data->config;
+
+  return HANDLE_MESSAGE_RESPONSE_EMPTY;
 }
 
-BootloaderHandleMessageResponse get_channel_led_config(const GetChannelLEDConfig *data, GetChannelLEDConfig_Response *response) {
-	response->header.length = sizeof(GetChannelLEDConfig_Response);
+BootloaderHandleMessageResponse get_channel_led_config(const GetChannelLEDConfig *data, GetChannelLEDConfig_Response *response)
+{
+  if(data->channel > 1) {
+    return HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER;
+  }
 
-	return HANDLE_MESSAGE_RESPONSE_NEW_MESSAGE;
+  response->header.length = sizeof(GetChannelLEDConfig_Response);
+  response->config        = relay.channel_led_config[data->channel];
+
+  return HANDLE_MESSAGE_RESPONSE_NEW_MESSAGE;
 }
 
-
-
-
-
-void communication_tick(void) {
-	communication_callback_tick();
+void communication_tick()
+{
+  communication_callback_tick();
 }
 
-void communication_init(void) {
-	communication_callback_init();
+void communication_init()
+{
+  communication_callback_init();
 }

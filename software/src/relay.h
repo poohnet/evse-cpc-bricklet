@@ -1,7 +1,7 @@
 /* evse-cpc-bricklet
  * Copyright (C) 2024 Thomas Hein <github@poohnet.de>
  *
- * main.c: Initialization for EVSE CPC Bricklet
+ * relay.h: Relay driver
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,24 +19,24 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#include <stdio.h>
+#pragma once
+
+#include <stdint.h>
 #include <stdbool.h>
 
-#include "configs/config.h"
+#include "bricklib2/utility/led_flicker.h"
 
-#include "bricklib2/bootloader/bootloader.h"
-#include "bricklib2/hal/system_timer/system_timer.h"
-#include "communication.h"
-#include "relay.h"
+#define RELAY_NUM 2
 
-int main(void)
-{
-  relay_init();
-  communication_init();
+typedef struct {
+	uint8_t channel_led_config[RELAY_NUM];
+	LEDFlickerState channel_led_flicker_state[RELAY_NUM];
+} Relay;
 
-  while (true) {
-    bootloader_tick();
-    communication_tick();
-    relay_tick();
-  }
-}
+extern Relay relay;
+
+bool relay_get_value(const uint8_t channel);
+void relay_set_value(const uint8_t channel, const bool value);
+
+void relay_init(void);
+void relay_tick(void);
