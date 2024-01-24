@@ -24,46 +24,42 @@
 #include "bricklib2/hal/system_timer/system_timer.h"
 #include "xmc_gpio.h"
 
-const uint8_t relay_pins[RELAY_NUM] = {8, 9};
+const uint8_t relay_pins[RELAY_NUM] = {9, 8};
 const uint8_t relay_led_pins[RELAY_NUM] = {5, 6};
 
 Relay relay;
 
-static inline uint32_t XMC_GPIO_GetOutputLevel(XMC_GPIO_PORT_t* const port, const uint8_t pin)
-{
-  return (((port->OUT) >> pin) & 0x1U);
-}
-
-void relay_set_led(const uint8_t channel, const bool state)
+void relay_set_led(const uint8_t channel, const bool value)
 {
   if (channel < RELAY_NUM) {
-    state ? XMC_GPIO_SetOutputLow(XMC_GPIO_PORT0, relay_led_pins[channel]) : XMC_GPIO_SetOutputHigh(XMC_GPIO_PORT0, relay_led_pins[channel]);
+    XMC_GPIO_SetOutputLevel(XMC_GPIO_PORT0, relay_led_pins[channel], value ? XMC_GPIO_OUTPUT_LEVEL_LOW : XMC_GPIO_OUTPUT_LEVEL_HIGH);
   }
 }
 
 bool relay_get_value(const uint8_t channel)
 {
   if (channel < RELAY_NUM) {
-    return XMC_GPIO_GetOutputLevel(XMC_GPIO_PORT0, relay_pins[channel]);
+    return !XMC_GPIO_GetInput(XMC_GPIO_PORT0, relay_pins[channel]);
   }
 
   return false;
 }
 
-void relay_set_value(const uint8_t channel, const bool state)
+void relay_set_value(const uint8_t channel, const bool value)
 {
   if (channel < RELAY_NUM) {
-    state ? XMC_GPIO_SetOutputLow(XMC_GPIO_PORT0, relay_pins[channel]) : XMC_GPIO_SetOutputHigh(XMC_GPIO_PORT0, relay_pins[channel]);
+    XMC_GPIO_SetOutputLevel(XMC_GPIO_PORT0, relay_pins[channel], value ? XMC_GPIO_OUTPUT_LEVEL_LOW : XMC_GPIO_OUTPUT_LEVEL_HIGH);
   }
 }
 
-void relay_init() {
+void relay_init()
+{
   const XMC_GPIO_CONFIG_t gpio_config = {
     .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL,
-    .output_level = XMC_GPIO_OUTPUT_LEVEL_LOW,
+    .output_level = XMC_GPIO_OUTPUT_LEVEL_HIGH,
   };
 
-  for (uint8_t i = 0; i < RELAY_NUM; i++) {    
+  for (uint8_t i = 0; i < RELAY_NUM; i++) {
     XMC_GPIO_Init(XMC_GPIO_PORT0, relay_pins[i], &gpio_config);
     XMC_GPIO_Init(XMC_GPIO_PORT0, relay_led_pins[i], &gpio_config);
 
@@ -72,10 +68,10 @@ void relay_init() {
   }
 }
 
-void relay_tick(void)
+void relay_tick()
 {
   for (uint8_t i = 0; i < RELAY_NUM; i++) {
-    switch(relay.channel_led_config[i]) {
+    switch (relay.channel_led_config[i]) {
       case EVSE_CPC_CHANNEL_LED_CONFIG_OFF: {
         relay.channel_led_flicker_state[i].config = LED_FLICKER_CONFIG_OFF;
         relay_set_led(i, false);
